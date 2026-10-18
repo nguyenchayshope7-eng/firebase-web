@@ -123,7 +123,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
     <div style="margin-top:8px;">🔐 OTP: <b id="testOtp">---</b></div>
 </div>
 
-<input type="text" id="phoneOutput" readonly placeholder="SĐT sau khi bỏ 2 số đầu">
+<input type="text" id="phoneOutput" readonly placeholder="SĐT sau khi bỏ 1 số đầu">
 <button id="manualCopyButton">📋 Copy</button>
 
 <input type="text" id="smsCodeOutput" readonly placeholder="Mã SMS">
@@ -342,10 +342,10 @@ function extractPhones(text) {
 }
 
 /* =========================================================
-   REMOVE FIRST TWO DIGITS
+   REMOVE FIRST DIGIT
 ========================================================= */
-function removeFirstTwoDigits(phone) {
-    return String(phone || "").substring(2);
+function removeFirstDigit(phone) {
+    return String(phone || "").substring(1);
 }
 
 /* =========================================================
@@ -564,7 +564,7 @@ document.getElementById("copyButton").onclick = async () => {
             return;
         }
 
-        const phone = removeFirstTwoDigits(originalPhone);
+        const phone = removeFirstDigit(originalPhone);
 
         if (!phone || phone.length < 6) {
             showToast("⚠️ SĐT không hợp lệ", "error");
