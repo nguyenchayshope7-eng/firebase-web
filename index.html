@@ -3,229 +3,635 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý Email Online - Auto Filter</title>
+<title>Quản lý SĐT Online - 18 Máy</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <style>
+* { box-sizing: border-box; }
+
 body {
-  font-family: sans-serif;
-  background: #f0f2f5;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  transition: background .5s, color .5s;
-  color: initial;
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    margin: 0;
+    transition: .3s;
 }
+
 body.duplicate-mode {
-  background: #8b0000 !important;
-  color: black !important;
+    background: #8b0000 !important;
+    color: #000 !important;
+}
+
+h3 {
+    margin: 5px 0 15px;
+    text-align: center;
 }
 
 textarea, input, button {
-  font-size: 16px;
-  width: 90%;
-  max-width: 340px;
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
+    font-size: 16px;
+    width: 90%;
+    max-width: 380px;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+textarea {
+    min-height: 150px;
+    resize: vertical;
 }
 
 button {
-  background: #007bff;
-  color: white;
-  border: none;
-  cursor: pointer;
+    background: #007bff;
+    color: #fff;
+    border: 0;
+    cursor: pointer;
+    transition: .2s;
 }
 
+button:hover { opacity: .9; }
+button:disabled { opacity: .6; cursor: not-allowed; }
 #deleteListButton { background: #0f4d0a; }
+
 #copyButton {
-  font-size: 20px;
-  padding: 18px;
-  width: 95%;
-  max-width: 380px;
-  background: #a728a7;
+    font-size: 20px;
+    padding: 18px;
+    width: 95%;
+    max-width: 380px;
+    background: #a728a7;
 }
-#clearLogsButton { background: #ffc107; color: black; }
+
+#clearLogsButton {
+    background: #ffc107;
+    color: #000;
+}
+
+#manualCopyButton { background: #007bff; }
 
 #customToast {
-  position: fixed;
-  top: -100px;
-  left: 0;
-  width: 100%;
-  background-color: #343a40;
-  color: white;
-  text-align: center;
-  padding: 16px 10px;
-  font-size: 18px;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(0,0,0,.3);
-  z-index: 9999;
-  transition: top .5s ease-in-out;
+    position: fixed;
+    top: -100px;
+    left: 0;
+    width: 100%;
+    background: #343a40;
+    color: #fff;
+    text-align: center;
+    padding: 16px 10px;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+    z-index: 9999;
+    transition: top .5s;
 }
+
 #customToast.show { top: 0; }
-#customToast.error { background-color: #d93025; }
-#customToast.success { background-color: #28a745; }
+#customToast.error { background: #d93025; }
+#customToast.success { background: #28a745; }
+
+#deviceInfo, #batchInfo {
+    font-size: 13px;
+    color: #666;
+    margin-top: 12px;
+    max-width: 90%;
+    text-align: center;
+    word-break: break-all;
+}
 </style>
 </head>
 
 <body>
-
 <div id="customToast"></div>
 
-<h3>📨 Quản lý danh sách Email Online</h3>
+<h3>📱 Quản lý danh sách Số Điện Thoại Online</h3>
 
-<textarea id="emailListInput" placeholder="Dán email, text rác, phân cách bất kỳ"></textarea>
-<button id="addListButton">➕ Thêm Email</button>
-<button id="deleteListButton">🗑️ Xóa Danh Sách Email</button>
+<textarea id="phoneListInput" placeholder="Dán nhiều SĐT cùng lúc — mỗi dòng 1 số&#10;&#10;Ví dụ:&#10;447462161407&#10;84912345678&#10;+84987654321"></textarea>
 
-<input type="text" id="emailOutput" readonly placeholder="Email sẽ xuất hiện ở đây">
+<button id="addListButton">➕ Thêm SĐT</button>
+<button id="deleteListButton">🗑️ Xóa Danh Sách SĐT</button>
+
+<div id="batchInfo">Có thể dán 18 số hoặc nhiều hơn trong một lần.</div>
+
+<div id="testOtpBox" style="width:90%;max-width:340px;margin-top:10px;padding:12px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px;background:#fff;">
+    <div>📱 SĐT: <b id="testPhone">---</b></div>
+    <div style="margin-top:8px;">🆔 Order ID: <b id="testOrder">---</b></div>
+    <div style="margin-top:8px;">🔐 OTP: <b id="testOtp">---</b></div>
+</div>
+
+<input type="text" id="phoneOutput" readonly placeholder="SĐT sau khi bỏ 2 số đầu">
 <button id="manualCopyButton">📋 Copy</button>
 
-<p id="count">📊 Số email còn lại: 0</p>
+<input type="text" id="smsCodeOutput" readonly placeholder="Mã SMS">
+<button id="copySmsButton">🔐 Lấy code & Copy code</button>
 
+<p id="count">📊 Số điện thoại còn lại: 0</p>
 <button id="clearLogsButton">🧹 Clear Log Copy</button>
-<button id="copyButton">📋 Lấy & Copy Email</button>
+<button id="copyButton">📋 Lấy & Copy Số Điện Thoại</button>
+<div id="deviceInfo"></div>
 
 <script>
-/* ========= FIREBASE ========= */
+/* =========================================================
+   FIREBASE - EMQUANPRO
+========================================================= */
 const firebaseConfig = {
-  apiKey: "AIzaSyB2IhWC3EBXnWo7dUnbonf1aBTiUjoQ09E",
-  authDomain: "email-tool-3e5dd.firebaseapp.com",
-  databaseURL: "https://email-tool-3e5dd-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "email-tool-3e5dd",
-  storageBucket: "email-tool-3e5dd.firebasestorage.app",
-  messagingSenderId: "698489971800",
-  appId: "1:698489971800:web:c8240cdcb35301e6a1962d",
-  measurementId: "G-SX49SFXLYE"
+    apiKey: "AIzaSyDwLVgSOlf8G9wNs6CvMIUXmgXXKcboXf0",
+    authDomain: "emquanpro-d406e.firebaseapp.com",
+    databaseURL: "https://emquanpro-d406e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "emquanpro-d406e",
+    storageBucket: "emquanpro-d406e.firebasestorage.app",
+    messagingSenderId: "437205091346",
+    appId: "1:437205091346:web:b8c7d6da96facd3ec644cb",
+    measurementId: "G-HVZ51E41BE"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const emailRef = db.ref("emails");
-const copyLogsRef = db.ref("copyLogs");
 
-let emailList = [];
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+const phoneRef = db.ref("phones");
+const copyLogsRef = db.ref("phoneCopyLogs");
+
+/* =========================================================
+   SMSCODE - GOI QUA BACKEND PROXY
+   Khong de token SMSCode trong HTML
+========================================================= */
+const SMSCODE_PROXY_URL = "https://lucky-boat-5074.nguyenchayshope7.workers.dev";
+
+let currentSmsOrderId = null;
+let currentOriginalPhone = null;
+let smsPollTimer = null;
+let copyWhenReady = false;
+
+function normalizePhone(phone) {
+    return String(phone || "").replace(/\D/g, "");
+}
+
+async function proxyApi(path) {
+    const response = await fetch(SMSCODE_PROXY_URL + path, {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+    });
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (_) {
+        throw new Error("Backend khong tra ve JSON");
+    }
+
+    if (!response.ok || data.success === false) {
+        throw new Error(
+            data?.error?.message ||
+            data?.message ||
+            `Backend HTTP ${response.status}`
+        );
+    }
+
+    return data;
+}
+
+async function findSmsOrderByPhone(phone) {
+    const target = normalizePhone(phone);
+    const result = await proxyApi("/find?phone=" + encodeURIComponent(target));
+    return result.data?.order || null;
+}
+
+async function getSmsOrder(orderId) {
+    const result = await proxyApi("/order?id=" + encodeURIComponent(orderId));
+    return result.data?.order || null;
+}
+
+function stopSmsPolling() {
+    if (smsPollTimer) {
+        clearInterval(smsPollTimer);
+        smsPollTimer = null;
+    }
+}
+
+async function waitForSmsCode(orderId, originalPhone) {
+    stopSmsPolling();
+    currentSmsOrderId = orderId;
+
+    const smsOutput = document.getElementById("smsCodeOutput");
+    smsOutput.value = "⏳ Đang chờ SMS...";
+
+    document.getElementById("testPhone").textContent = originalPhone || "---";
+    document.getElementById("testOrder").textContent = orderId || "---";
+    document.getElementById("testOtp").textContent = "---";
+
+    const check = async () => {
+        try {
+            const order = await getSmsOrder(orderId);
+            if (!order) return;
+
+            if (order.otp_code) {
+                smsOutput.value = order.otp_code;
+                document.getElementById("testOtp").textContent = order.otp_code;
+                stopSmsPolling();
+
+                if (copyWhenReady) {
+                    await copyText(order.otp_code);
+                } else {
+                    showToast("✅ Đã nhận mã SMS: " + order.otp_code, "success");
+                }
+                return;
+            }
+
+            if (order.status === "EXPIRED" || order.status === "CANCELED") {
+                smsOutput.value = "Order đã hết hạn";
+                stopSmsPolling();
+            }
+        } catch (error) {
+            console.error("SMSCode:", error);
+            smsOutput.value = "Lỗi: " + (error.message || error);
+            stopSmsPolling();
+        }
+    };
+
+    await check();
+
+    if (smsPollTimer === null) {
+        smsPollTimer = setInterval(check, 3000);
+    }
+}
+
+async function startSmsForPhone(originalPhone, copyWhenReadyValue = false) {
+    copyWhenReady = copyWhenReadyValue;
+
+    try {
+        document.getElementById("smsCodeOutput").value = "🔎 Đang tìm Order...";
+        const order = await findSmsOrderByPhone(originalPhone);
+
+        if (!order) {
+            document.getElementById("smsCodeOutput").value = "Không tìm thấy Order";
+            document.getElementById("testPhone").textContent = originalPhone || "---";
+            document.getElementById("testOrder").textContent = "---";
+            document.getElementById("testOtp").textContent = "---";
+            showToast("⚠️ Không tìm thấy Order tương ứng với SĐT", "error");
+            return;
+        }
+
+        await waitForSmsCode(order.id, originalPhone);
+    } catch (error) {
+        console.error("SMSCode Proxy:", error);
+        const msg = error && error.message ? error.message : String(error);
+        document.getElementById("smsCodeOutput").value = "Lỗi: " + msg;
+        showToast("⚠️ " + msg, "error");
+    }
+}
+
+document.getElementById("copySmsButton").onclick = async () => {
+    const button = document.getElementById("copySmsButton");
+
+    if (!currentOriginalPhone) {
+        showToast("⚠️ Hãy lấy SĐT trước", "error");
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "⏳ Đang tìm SMS mới...";
+
+    try {
+        await startSmsForPhone(currentOriginalPhone, true);
+    } catch (error) {
+        console.error("SMSCode:", error);
+    } finally {
+        button.disabled = false;
+        button.textContent = "🔐 Lấy code & Copy code";
+    }
+};
+
+let phoneList = [];
 let isDuplicateToast = false;
 
-/* ========= DEVICE ID ========= */
+/* =========================================================
+   DEVICE ID
+========================================================= */
 let deviceId = localStorage.getItem("deviceId");
+
 if (!deviceId) {
-  deviceId = "dev_" + Math.random().toString(36).substring(2,10);
-  localStorage.setItem("deviceId", deviceId);
+    deviceId = "dev_" + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem("deviceId", deviceId);
 }
 
-/* ========= UTILS ========= */
-function extractEmails(text) {
-  const regex = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
-  return [...new Set(text.match(regex) || [])];
+document.getElementById("deviceInfo").textContent = "Thiết bị hiện tại: " + deviceId;
+
+/* =========================================================
+   EXTRACT PHONE
+========================================================= */
+function extractPhones(text) {
+    const results = [];
+    const lines = text.split(/\r?\n/);
+
+    for (const line of lines) {
+        const matches = line.match(/\+?\d[\d\s().-]*\d/g) || [];
+
+        for (const raw of matches) {
+            const phone = raw.replace(/\D/g, "");
+            if (phone.length >= 8 && phone.length <= 15) {
+                results.push(phone);
+            }
+        }
+    }
+
+    return [...new Set(results)];
 }
 
+/* =========================================================
+   REMOVE FIRST TWO DIGITS
+========================================================= */
+function removeFirstTwoDigits(phone) {
+    return String(phone || "").substring(2);
+}
+
+/* =========================================================
+   UPDATE COUNT
+========================================================= */
 function updateCount() {
-  document.getElementById("count").textContent =
-    `📊 Số email còn lại: ${emailList.length}`;
+    document.getElementById("count").textContent =
+        `📊 Số điện thoại còn lại: ${phoneList.length}`;
 }
 
-/* ========= TOAST ========= */
-function showToast(msg, type="") {
-  const t = document.getElementById("customToast");
-  t.textContent = msg;
-  t.className = "show " + type;
+/* =========================================================
+   TOAST
+========================================================= */
+function showToast(msg, type = "") {
+    const toast = document.getElementById("customToast");
+    toast.textContent = msg;
+    toast.className = "show " + type;
 
-  if (type !== "error") {
-    setTimeout(() => {
-      if (!isDuplicateToast) t.className = "";
-    }, 4000);
-  }
+    if (type !== "error") {
+        setTimeout(() => {
+            if (!isDuplicateToast) toast.className = "";
+        }, 3000);
+    }
 }
 
+/* =========================================================
+   DUPLICATE TOAST
+========================================================= */
 function showDuplicateToast(msg) {
-  isDuplicateToast = true;
-  document.body.classList.add("duplicate-mode");
-  showToast(msg, "error");
+    isDuplicateToast = true;
+    document.body.classList.add("duplicate-mode");
+    showToast(msg, "error");
 }
 
 function hideDuplicateToast() {
-  isDuplicateToast = false;
-  document.body.classList.remove("duplicate-mode");
-  document.getElementById("customToast").className = "";
+    isDuplicateToast = false;
+    document.body.classList.remove("duplicate-mode");
+    document.getElementById("customToast").className = "";
 }
 
-/* ========= COPY ========= */
-function copyText(text) {
-  navigator.clipboard.writeText(text)
-    .then(() => showToast(`✅ Đã copy: ${text}`, "success"))
-    .catch(() => showToast("⚠️ Không thể copy", "error"));
+/* =========================================================
+   COPY
+========================================================= */
+async function copyText(text) {
+    if (!text) {
+        showToast("⚠️ Không có dữ liệu để copy", "error");
+        return false;
+    }
+
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            fallbackCopy(text);
+        }
+
+        showToast(`✅ Đã copy: ${text}`, "success");
+        return true;
+    } catch (e) {
+        try {
+            fallbackCopy(text);
+            return true;
+        } catch (err) {
+            showToast("⚠️ Không thể copy", "error");
+            return false;
+        }
+    }
 }
 
-/* ========= FIREBASE LISTENER ========= */
-emailRef.on("value", snap => {
-  const data = snap.val();
-  emailList = data ? Object.values(data) : [];
-  updateCount();
+/* =========================================================
+   FALLBACK COPY
+========================================================= */
+function fallbackCopy(text) {
+    const temp = document.createElement("textarea");
+    temp.value = text;
+    temp.style.position = "fixed";
+    temp.style.left = "-9999px";
+    document.body.appendChild(temp);
+    temp.focus();
+    temp.select();
+    document.execCommand("copy");
+    document.body.removeChild(temp);
+}
+
+/* =========================================================
+   FIREBASE LISTENER
+========================================================= */
+phoneRef.on("value", snap => {
+    const data = snap.val() || {};
+
+    phoneList = Object.values(data)
+        .filter(v => typeof v === "string")
+        .map(v => v.trim())
+        .filter(Boolean);
+
+    updateCount();
+}, error => {
+    console.error(error);
+    showToast("⚠️ Không thể đọc Firebase", "error");
 });
 
-/* ========= ADD EMAIL ========= */
-addListButton.onclick = () => {
-  const emails = extractEmails(emailListInput.value);
-  if (!emails.length) return showToast("⚠️ Không có email hợp lệ", "error");
-  emails.forEach(e => emailRef.push(e));
-  emailListInput.value = "";
-  showToast(`✅ Đã thêm ${emails.length} email`, "success");
-};
+/* =========================================================
+   ADD MANY PHONES
+========================================================= */
+document.getElementById("addListButton").onclick = async () => {
+    const input = document.getElementById("phoneListInput");
+    const text = input.value;
 
-/* ========= DELETE LIST ========= */
-deleteListButton.onclick = () => {
-  if (!confirm("Xóa toàn bộ email?")) return;
-  emailRef.remove();
-  showToast("✅ Đã xóa danh sách", "success");
-};
-
-/* ========= MANUAL COPY ========= */
-manualCopyButton.onclick = () => {
-  if (!emailOutput.value) return showToast("⚠️ Không có email", "error");
-  copyText(emailOutput.value);
-};
-
-/* ========= AUTO COPY + CHECK TRÙNG ========= */
-copyButton.onclick = () => {
-  hideDuplicateToast();
-
-  if (!emailList.length)
-    return showToast("⚠️ Danh sách đã hết email", "error");
-
-  const email = emailList[Math.floor(Math.random() * emailList.length)];
-  emailOutput.value = email;
-  copyText(email);
-
-  emailRef.orderByValue().equalTo(email).limitToFirst(1).once("value", s => {
-    s.forEach(c => c.ref.remove());
-  });
-
-  const now = Date.now();
-  copyLogsRef.child(now + "_" + deviceId).set({ email, time: now, deviceId });
-
-  copyLogsRef.orderByChild("time").startAt(now - 15000).once("value", snap => {
-    const logs = snap.val() || {};
-    for (const k in logs) {
-      const log = logs[k];
-      if (log.email === email && log.deviceId !== deviceId) {
-        showDuplicateToast(`⚠️ Email "${email}" đã bị lấy bởi thiết bị khác!`);
-        break;
-      }
+    if (!text.trim()) {
+        showToast("⚠️ Hãy dán danh sách SĐT", "error");
+        return;
     }
-  });
+
+    const phones = extractPhones(text);
+
+    if (!phones.length) {
+        showToast("⚠️ Không tìm thấy SĐT hợp lệ", "error");
+        return;
+    }
+
+    try {
+        const updates = {};
+
+        for (const phone of phones) {
+            const key = phoneRef.push().key;
+            updates[key] = phone;
+        }
+
+        await phoneRef.update(updates);
+        input.value = "";
+        showToast(`✅ Đã thêm ${phones.length} SĐT`, "success");
+    } catch (error) {
+        console.error(error);
+        showToast("⚠️ Không thể thêm SĐT vào Firebase", "error");
+    }
 };
 
-/* ========= CLEAR LOG ========= */
-clearLogsButton.onclick = () => {
-  copyLogsRef.remove();
-  showToast("✅ Đã clear log", "success");
+/* =========================================================
+   DELETE ALL
+========================================================= */
+document.getElementById("deleteListButton").onclick = async () => {
+    if (!confirm("Xóa toàn bộ danh sách SĐT?")) return;
+
+    try {
+        await phoneRef.remove();
+        showToast("✅ Đã xóa toàn bộ danh sách", "success");
+    } catch (error) {
+        showToast("⚠️ Không thể xóa danh sách", "error");
+    }
+};
+
+/* =========================================================
+   MANUAL COPY
+========================================================= */
+document.getElementById("manualCopyButton").onclick = () => {
+    const value = document.getElementById("phoneOutput").value;
+
+    if (!value) {
+        showToast("⚠️ Chưa có SĐT", "error");
+        return;
+    }
+
+    copyText(value);
+};
+
+/* =========================================================
+   CLAIM ONE PHONE
+========================================================= */
+async function claimOnePhone() {
+    const snapshot = await phoneRef.once("value");
+    const data = snapshot.val() || {};
+    const entries = Object.entries(data);
+
+    if (!entries.length) return null;
+
+    for (const [key, value] of entries) {
+        if (typeof value !== "string" || !value.trim()) continue;
+
+        const ref = phoneRef.child(key);
+        let candidate = null;
+
+        const result = await ref.transaction(current => {
+            if (typeof current !== "string" || !current.trim()) return;
+            candidate = current;
+            return {
+                phone: current,
+                claimedBy: deviceId,
+                claimedAt: Date.now()
+            };
+        });
+
+        if (result.committed && candidate) {
+            await ref.remove();
+            return candidate;
+        }
+    }
+
+    return null;
+}
+
+/* =========================================================
+   GET + COPY
+========================================================= */
+document.getElementById("copyButton").onclick = async () => {
+    hideDuplicateToast();
+
+    const button = document.getElementById("copyButton");
+    button.disabled = true;
+    button.textContent = "⏳ Đang lấy SĐT...";
+
+    try {
+        const originalPhone = await claimOnePhone();
+
+        if (!originalPhone) {
+            showToast("⚠️ Danh sách đã hết SĐT", "error");
+            return;
+        }
+
+        const phone = removeFirstTwoDigits(originalPhone);
+
+        if (!phone || phone.length < 6) {
+            showToast("⚠️ SĐT không hợp lệ", "error");
+            return;
+        }
+
+        currentOriginalPhone = originalPhone;
+        currentSmsOrderId = null;
+        stopSmsPolling();
+
+        document.getElementById("phoneOutput").value = phone;
+        document.getElementById("smsCodeOutput").value = "Chưa lấy code";
+        document.getElementById("testPhone").textContent = originalPhone;
+        document.getElementById("testOrder").textContent = "---";
+        document.getElementById("testOtp").textContent = "---";
+
+        await copyText(phone);
+
+        const now = Date.now();
+        const logKey = now + "_" + deviceId;
+
+        await copyLogsRef.child(logKey).set({
+            originalPhone: originalPhone,
+            phone: phone,
+            time: now,
+            deviceId: deviceId
+        });
+
+        const logsSnap = await copyLogsRef
+            .orderByChild("time")
+            .startAt(now - 15000)
+            .once("value");
+
+        const logs = logsSnap.val() || {};
+
+        for (const key in logs) {
+            const log = logs[key];
+
+            if (log.deviceId === deviceId) continue;
+
+            if (log.phone === phone) {
+                showDuplicateToast(`⚠️ SĐT "${phone}" đã bị lấy bởi thiết bị khác!`);
+                break;
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        showToast("⚠️ Lỗi khi lấy SĐT: " + (error.message || error), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = "📋 Lấy & Copy Số Điện Thoại";
+    }
+};
+
+/* =========================================================
+   CLEAR LOG
+========================================================= */
+document.getElementById("clearLogsButton").onclick = async () => {
+    if (!confirm("Clear toàn bộ log copy?")) return;
+
+    try {
+        await copyLogsRef.remove();
+        showToast("✅ Đã clear log", "success");
+    } catch (error) {
+        showToast("⚠️ Không thể clear log", "error");
+    }
 };
 </script>
-
 </body>
 </html>
